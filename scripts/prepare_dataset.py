@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import argparse
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -17,9 +18,7 @@ for d in os.listdir(ROOT_DIR):
             DATASETS.append(d)
 
 OUTPUT = os.path.join(ROOT_DIR, 'dataset.jsonl')
-
 ENTRY_RE = re.compile(r'!\[(.*?)\]\((.*?)\)')
-
 
 def iter_content_files(dataset_dir):
     """Yield all content markdown files in dataset directory."""
@@ -28,33 +27,56 @@ def iter_content_files(dataset_dir):
     for part in sorted(parts):
         yield os.path.join(base, part)
 
-
 def parse_markdown(text):
     """Parse markdown content into paragraphs and image references."""
     paragraphs = []
     current = []
     images = []
+
+    def flush():
+        nonlocal current, images
+        if current:
+            paragraphs.append({'text': ' '.join(current), 'images': images})
+            current = []
+            images = []
+
     for line in text.splitlines():
         line = line.strip()
         if not line:
-            if current:
-                paragraphs.append({'text': ' '.join(current), 'images': images})
-                current = []
-                images = []
+            flush()
             continue
+
         m = ENTRY_RE.search(line)
         if m:
             images.append(m.group(2))
             line = ENTRY_RE.sub('', line).strip()
-        if line:
-            current.append(line)
-    if current:
-        paragraphs.append({'text': ' '.join(current), 'images': images})
+
+        if line.startswith('#'):
+            flush()
+            heading = line.lstrip('#').strip()
+            if heading:
+                paragraphs.append({'text': heading, 'images': []})
+            continue
+
+        if line.startswith('- '):
+            flush()
+            item = line[2:].strip()
+            if item:
+                paragraphs.append({'text': item, 'images': []})
+            continue
+
+        current.append(line)
+
+    flush()
     return paragraphs
 
-
 def main():
-    with open(OUTPUT, 'w', encoding='utf-8') as out_f:
+    parser = argparse.ArgumentParser(description="Convert book markdown to JSONL")
+    parser.add_argument('-o', '--output', default=OUTPUT,
+                        help='Path for the output JSONL file')
+    args = parser.parse_args()
+
+    with open(args.output, 'w', encoding='utf-8') as out_f:
         for dataset in sorted(set(DATASETS)):
             for path in iter_content_files(dataset):
                 with open(path, 'r', encoding='utf-8') as f:
@@ -69,7 +91,6 @@ def main():
                     if para['images']:
                         record['images'] = para['images']
                     out_f.write(json.dumps(record, ensure_ascii=False) + '\n')
-
 
 if __name__ == '__main__':
     main()
