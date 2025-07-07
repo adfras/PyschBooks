@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import argparse
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -74,7 +75,12 @@ def parse_markdown(text):
 
 
 def main():
-    with open(OUTPUT, 'w', encoding='utf-8') as out_f:
+    parser = argparse.ArgumentParser(description="Convert book markdown to JSONL")
+    parser.add_argument('-o', '--output', default=OUTPUT,
+                        help='Path for the output JSONL file')
+    args = parser.parse_args()
+
+    with open(args.output, 'w', encoding='utf-8') as out_f:
         for dataset in sorted(set(DATASETS)):
             for path in iter_content_files(dataset):
                 with open(path, 'r', encoding='utf-8') as f:

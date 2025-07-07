@@ -5,9 +5,10 @@ This repository hosts several openly licensed psychology textbooks. Each book is
 ## Dataset Preparation
 
 Use the script below to transform the markdown sources into a single machine readable dataset. The output is suitable for downstream tasks such as question generation.
+An optional `-o` argument lets you choose a custom output path.
 
 ```bash
-python scripts/prepare_dataset.py
+python scripts/prepare_dataset.py -o my_dataset.jsonl
 ```
 
 The script creates `dataset.jsonl` with one paragraph per line. Image references are retained in a list under the `images` key.
