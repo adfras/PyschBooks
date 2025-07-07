@@ -18,9 +18,7 @@ for d in os.listdir(ROOT_DIR):
             DATASETS.append(d)
 
 OUTPUT = os.path.join(ROOT_DIR, 'dataset.jsonl')
-
 ENTRY_RE = re.compile(r'!\[(.*?)\]\((.*?)\)')
-
 
 def iter_content_files(dataset_dir):
     """Yield all content markdown files in dataset directory."""
@@ -28,7 +26,6 @@ def iter_content_files(dataset_dir):
     parts = [f for f in os.listdir(base) if f.startswith('content') and f.endswith('.md')]
     for part in sorted(parts):
         yield os.path.join(base, part)
-
 
 def parse_markdown(text):
     """Parse markdown content into paragraphs and image references."""
@@ -73,7 +70,6 @@ def parse_markdown(text):
     flush()
     return paragraphs
 
-
 def main():
     parser = argparse.ArgumentParser(description="Convert book markdown to JSONL")
     parser.add_argument('-o', '--output', default=OUTPUT,
@@ -95,7 +91,6 @@ def main():
                     if para['images']:
                         record['images'] = para['images']
                     out_f.write(json.dumps(record, ensure_ascii=False) + '\n')
-
 
 if __name__ == '__main__':
     main()
