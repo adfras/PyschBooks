@@ -1,31 +1,27 @@
+import argparse
 import json
 import os
 import re
 import random
-import argparse
+import pathlib
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DEFAULT_INPUT = os.path.join(ROOT, 'dataset.jsonl')
 DEFAULT_OUTPUT = os.path.join(ROOT, 'questions.jsonl')
 
+# --- DOMAIN LEXICON --------------------------------------------------------
+LEXICON_PATH = pathlib.Path(__file__).parent.parent / 'psych_terms.txt'
+if LEXICON_PATH.exists():
+    PSYCH_TERMS = {
+        w.strip().lower()
+        for w in LEXICON_PATH.read_text().splitlines()
+        if w.strip()
+    }
+else:
+    PSYCH_TERMS = set()
+
 SENTENCE_RE = re.compile(r'(?<=[.!?]) +')
 
-STOP_SUBJECTS = {
-    'i', 'we', 'you', 'he', 'she', 'it', 'they', 'there',
-    'this', 'that', 'these', 'those'
-}
-
-# Words that invalidate a subject when they appear as the first token
-STOP_FIRST_WORDS = STOP_SUBJECTS | {
-    'my', 'our', 'your', 'his', 'her', 'its', 'their',
-    'the', 'a', 'an', 'some', 'any'
-}
-
-PATTERNS = [
-    (r"(.+?)\s+(is|are)\s+(.*)", None),
-    (r"(.+?)\s+refers\s+to\s+(.*)", "is"),
-    (r"(.+?)\s+can\s+be\s+defined\s+as\s+(.*)", "is"),
-]
 
 
 def _invalid_sentence(sentence: str) -> bool:
@@ -54,55 +50,55 @@ def _invalid_sentence(sentence: str) -> bool:
         return True
     if re.match(r'^[0-9]+[.)]', s):
         return True
-    if re.search(r'\b(i|we|our|my|your|you)\b', lower):
-        return True
     return False
 
 
-def create_question(text):
-    if text.strip().istitle() and ' ' not in text:
+def score_domain(text: str) -> int:
+    """Count how many psychology keywords appear in text."""
+    tokens = re.findall(r"\b[a-z]+\b", text.lower())
+    return sum(1 for t in tokens if t in PSYCH_TERMS)
+
+
+def create_question(text: str):
+    """Generate a Q-A pair if the text contains a clear psychology definition."""
+    if text.strip().istitle() and " " not in text:
         return None, None
-    sentences = SENTENCE_RE.split(text)
-    for s in sentences:
+
+    patterns = [
+        r"(.+?)\s+(is|are)\s+(.*)",
+        r"(.+?)\s+(refers)\s+to\s+(.*)",
+        r"(.+?)\s+(can\s+be\s+defined\s+as)\s+(.*)",
+    ]
+
+    for s in re.split(r"[.;?!]\s+", text):
         s = s.strip()
         if _invalid_sentence(s):
             continue
-        m = None
-        verb = None
-        description = None
-        for pat, default in PATTERNS:
-            m = re.match(pat, s, flags=re.IGNORECASE)
-            if m:
-                if default is None:
-                    verb = m.group(2)
-                    description = m.group(3)
-                else:
-                    verb = default
-                    description = m.group(2)
-                break
-        if not m:
-            continue
-        subject = m.group(1).strip()
-        description = description.rstrip('.').strip()
-        first_word = subject.split()[0].lower()
-        if first_word in STOP_FIRST_WORDS:
-            continue
-        if len(subject.split()) > 6:
-            continue
-        if not re.match(r'^[A-Za-z][A-Za-z -]*$', subject):
-            continue
-        if subject.lower() in STOP_SUBJECTS:
-            continue
-        if len(description.split()) < 5 or len(description.split()) > 20:
-            continue
-        stems = [
-            lambda subj, verb: f"What {verb} {subj}?",
-            lambda subj, verb: f"Define {subj}.",
-            lambda subj, verb: f"In psychology, what {verb} {subj}?",
-        ]
-        q = random.choice(stems)(subject, verb)
-        a = f"{subject} {verb} {description}."
-        return q, a
+        for pat in patterns:
+            m = re.match(pat, s, re.IGNORECASE)
+            if not m:
+                continue
+            subj, verb, desc = (
+                m.group(1).strip(),
+                m.group(2).lower(),
+                m.group(3).strip(),
+            )
+
+            if len(desc.split()) < 7 or len(desc.split()) > 30:
+                continue
+            if score_domain(subj + " " + desc) < 2:
+                continue
+
+            stem = random.choice(
+                [
+                    lambda x, y: f"What {y} {x}?",
+                    lambda x, _: f"Define {x}.",
+                    lambda x, y: f"In psychology, what {y} {x}?",
+                ]
+            )
+            question = stem(subj, verb)
+            answer = f"{subj} {verb} {desc.rstrip('.')}."
+            return question, answer
     return None, None
 
 

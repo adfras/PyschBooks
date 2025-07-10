@@ -17,3 +17,20 @@ def test_skip_pronoun_subject():
     assert q is None
     assert a is None
 
+
+def test_domain_filter():
+    q, a = create_question(
+        "Their flippers are not very efficient for moving across the hot sand, yet they continue onward, instinctively."
+    )
+    assert q is None
+    assert a is None
+
+
+def test_valid_psych_question():
+    q, a = create_question(
+        "Classical conditioning refers to learning through association between specific stimuli and observable responses."
+    )
+    assert q is not None
+    assert "Classical conditioning" in q
+    assert "learning through association" in a
+

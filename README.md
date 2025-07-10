@@ -27,5 +27,9 @@ The question generator accepts optional `--input`, `--output`, and `--limit`
 flags. When omitted it looks for `dataset.jsonl` and writes `questions.jsonl`
 while processing up to 100 paragraphs.
 
+Quality checks rely on a small psychology lexicon stored in `psych_terms.txt`.
+If this file is present, candidate questions must include at least two of these
+keywords and the answer length must fall between 7 and 30 words.
+
 The tutor now assigns a concept to each question based on the subject of the prompt. During an interactive session your knowledge is updated per concept so you receive a mastery summary at the end.
 
