@@ -9,3 +9,11 @@ def test_simple():
     assert "Memory" in q
     assert "process of storing" in a
 
+
+def test_skip_pronoun_subject():
+    q, a = create_question(
+        "This type of information is explicitly stored and retrieved."
+    )
+    assert q is None
+    assert a is None
+

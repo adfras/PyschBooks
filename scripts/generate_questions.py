@@ -15,6 +15,12 @@ STOP_SUBJECTS = {
     'this', 'that', 'these', 'those'
 }
 
+# Words that invalidate a subject when they appear as the first token
+STOP_FIRST_WORDS = STOP_SUBJECTS | {
+    'my', 'our', 'your', 'his', 'her', 'its', 'their',
+    'the', 'a', 'an', 'some', 'any'
+}
+
 PATTERNS = [
     (r"(.+?)\s+(is|are)\s+(.*)", None),
     (r"(.+?)\s+refers\s+to\s+(.*)", "is"),
@@ -78,6 +84,9 @@ def create_question(text):
             continue
         subject = m.group(1).strip()
         description = description.rstrip('.').strip()
+        first_word = subject.split()[0].lower()
+        if first_word in STOP_FIRST_WORDS:
+            continue
         if len(subject.split()) > 6:
             continue
         if not re.match(r'^[A-Za-z][A-Za-z -]*$', subject):
