@@ -10,3 +10,17 @@ An optional `-o` argument lets you choose a custom output path.
 
 ```bash
 python scripts/prepare_dataset.py -o my_dataset.jsonl
+```
+
+## Tutor Model
+
+After preparing the dataset you can build a simple tutor model and launch an interactive session.
+
+```bash
+python scripts/generate_questions.py       # create questions.jsonl
+python train_tutor.py                       # build tutor_model.json
+python interactive_tutor.py                 # start the tutor
+```
+
+The tutor now assigns a concept to each question based on the subject of the prompt. During an interactive session your knowledge is updated per concept so you receive a mastery summary at the end.
+
