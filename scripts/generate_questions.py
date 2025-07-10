@@ -2,9 +2,11 @@ import json
 import os
 import re
 import random
+import argparse
 
-INPUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataset.jsonl')
-OUTPUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'questions.jsonl')
+ROOT = os.path.dirname(os.path.dirname(__file__))
+DEFAULT_INPUT = os.path.join(ROOT, 'dataset.jsonl')
+DEFAULT_OUTPUT = os.path.join(ROOT, 'questions.jsonl')
 
 SENTENCE_RE = re.compile(r'(?<=[.!?]) +')
 
@@ -95,19 +97,35 @@ def create_question(text):
     return None, None
 
 
-def main():
-    with open(INPUT, 'r', encoding='utf-8') as in_f, open(OUTPUT, 'w', encoding='utf-8') as out_f:
+def main(args: argparse.Namespace) -> None:
+    with open(args.input, 'r', encoding='utf-8') as in_f, \
+         open(args.output, 'w', encoding='utf-8') as out_f:
         for idx, line in enumerate(in_f):
-            if idx >= 100:
+            if args.limit and idx >= args.limit:
                 break
             record = json.loads(line)
             q, a = create_question(record['text'])
             if q:
-                out_f.write(json.dumps({'book': record['book'],
-                                         'paragraph_index': record['paragraph_index'],
-                                         'question': q,
-                                         'answer': a}) + '\n')
+                out_f.write(
+                    json.dumps(
+                        {
+                            'book': record['book'],
+                            'paragraph_index': record['paragraph_index'],
+                            'question': q,
+                            'answer': a,
+                        }
+                    )
+                    + '\n'
+                )
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Generate flashcard questions')
+    parser.add_argument('-i', '--input', default=DEFAULT_INPUT,
+                        help='Path to dataset JSONL')
+    parser.add_argument('-o', '--output', default=DEFAULT_OUTPUT,
+                        help='Path to output questions JSONL')
+    parser.add_argument('-l', '--limit', type=int, default=None,
+                        help='Maximum number of paragraphs to process')
+    args = parser.parse_args()
+    main(args)
