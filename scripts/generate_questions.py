@@ -1,11 +1,23 @@
 import json
 import os
 import re
+import random
 
 INPUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataset.jsonl')
 OUTPUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'questions.jsonl')
 
 SENTENCE_RE = re.compile(r'(?<=[.!?]) +')
+
+STOP_SUBJECTS = {
+    'i', 'we', 'you', 'he', 'she', 'it', 'they', 'there',
+    'this', 'that', 'these', 'those'
+}
+
+PATTERNS = [
+    (r"(.+?)\s+(is|are)\s+(.*)", None),
+    (r"(.+?)\s+refers\s+to\s+(.*)", "is"),
+    (r"(.+?)\s+can\s+be\s+defined\s+as\s+(.*)", "is"),
+]
 
 
 def _invalid_sentence(sentence: str) -> bool:
@@ -40,30 +52,45 @@ def _invalid_sentence(sentence: str) -> bool:
 
 
 def create_question(text):
+    if text.strip().istitle() and ' ' not in text:
+        return None, None
     sentences = SENTENCE_RE.split(text)
     for s in sentences:
         s = s.strip()
         if _invalid_sentence(s):
             continue
-        # pattern: "X is ..." or "X are ..."
-        m = re.match(r'(.+?)\s+(is|are)\s+(.*)', s, flags=re.IGNORECASE)
+        m = None
+        verb = None
+        description = None
+        for pat, default in PATTERNS:
+            m = re.match(pat, s, flags=re.IGNORECASE)
+            if m:
+                if default is None:
+                    verb = m.group(2)
+                    description = m.group(3)
+                else:
+                    verb = default
+                    description = m.group(2)
+                break
         if not m:
             continue
         subject = m.group(1).strip()
-        description = m.group(3).rstrip('.').strip()
+        description = description.rstrip('.').strip()
         if len(subject.split()) > 6:
             continue
         if not re.match(r'^[A-Za-z][A-Za-z -]*$', subject):
             continue
-        if subject.lower() in {
-            'i', 'we', 'you', 'he', 'she', 'it', 'they', 'there',
-            'this', 'that', 'these', 'those'
-        }:
+        if subject.lower() in STOP_SUBJECTS:
             continue
-        if len(description.split()) > 20:
+        if len(description.split()) < 5 or len(description.split()) > 20:
             continue
-        q = f"What {m.group(2)} {subject}?"
-        a = f"{subject} {m.group(2)} {description}."
+        stems = [
+            lambda subj, verb: f"What {verb} {subj}?",
+            lambda subj, verb: f"Define {subj}.",
+            lambda subj, verb: f"In psychology, what {verb} {subj}?",
+        ]
+        q = random.choice(stems)(subject, verb)
+        a = f"{subject} {verb} {description}."
         return q, a
     return None, None
 
